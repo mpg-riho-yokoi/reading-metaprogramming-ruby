@@ -77,13 +77,10 @@ end
 #   c4.increment # => "3"
 # - 定義済みのメソッド (value, value=) は private のままとなっている
 class C4
-  def initialize(value)
-    @value = value
-  end
-
   def increment
-    @value += 1
-    @value.to_s
+    self.value ||= 0
+    self.value += 1
+    value.to_s
   end
   private
 
@@ -127,6 +124,6 @@ class C6
   include M1
   using M1Refinements
   def name
-    'Refined M1'
+    super
   end
 end
