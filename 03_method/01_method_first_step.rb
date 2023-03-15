@@ -12,7 +12,9 @@ class F1
         'hello'
     end
 
-    # 2 はわからず
+    define_singleton_method :world do
+        'world'
+    end
 
     def method_missing(*args)
         'NoMethodError'
