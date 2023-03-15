@@ -6,6 +6,20 @@ TryOver3 = Module.new
 # - `test_` メソッドがこのクラスに実装されていなくても `test_` から始まるメッセージに応答することができる
 # - TryOver3::A1 には `test_` から始まるインスタンスメソッドが定義されていない
 
+# ref：https://docs.ruby-lang.org/ja/latest/method/Object/i/respond_to_missing=3f.html
+# ref：https://docs.ruby-lang.org/ja/latest/method/String/i/start_with=3f.html
+class TryOver3::A1
+  def run_test; end
+  def method_missing(method, *args)
+    if method.to_s.start_with?('test_')
+      run_test
+    end
+      super
+  end
+  def respond_to_missing?(method)
+    method.to_s.start_with?('test_')
+  end
+end
 
 # Q2
 # 以下要件を満たす TryOver3::A2Proxy クラスを作成してください。
@@ -15,6 +29,12 @@ class TryOver3::A2
   def initialize(name, value)
     instance_variable_set("@#{name}", value)
     self.class.attr_accessor name.to_sym unless respond_to? name.to_sym
+  end
+end
+
+class TryOver3::A2Proxy
+  def initialize(source)
+    @source = source
   end
 end
 
