@@ -6,11 +6,27 @@ TryOver3 = Module.new
 # - `test_` メソッドがこのクラスに実装されていなくても `test_` から始まるメッセージに応答することができる
 # - TryOver3::A1 には `test_` から始まるインスタンスメソッドが定義されていない
 
+# ref：https://docs.ruby-lang.org/ja/latest/method/Object/i/respond_to_missing=3f.html
+# ref：https://docs.ruby-lang.org/ja/latest/method/String/i/start_with=3f.html
+class TryOver3::A1
+  def run_test; end
+  def method_missing(method, *args)
+    if method.to_s.start_with?('test_')
+      run_test
+    else
+      super
+    end
+  end
+  def respond_to_missing?(method)
+    method.to_s.start_with?('test_')
+  end
+end
 
 # Q2
 # 以下要件を満たす TryOver3::A2Proxy クラスを作成してください。
 # - TryOver3::A2Proxy は initialize に TryOver3::A2 のインスタンスを受け取り、それを @source に代入する
 # - TryOver3::A2Proxy は、@sourceに定義されているメソッドが自分自身に定義されているように振る舞う
+
 class TryOver3::A2
   def initialize(name, value)
     instance_variable_set("@#{name}", value)
@@ -18,6 +34,19 @@ class TryOver3::A2
   end
 end
 
+class TryOver3::A2Proxy
+  def initialize(source)
+    @source = source
+  end
+
+  def method_missing(name, *args)
+    @source.send(name, *args)
+  end
+
+  def respond_to_missing?(name, include_all)
+    @source.respond_to?(name, include_all)
+  end
+end
 
 # Q3.
 # 02_define.rbのQ3ではOriginalAccessor の my_attr_accessor で定義した getter/setter に
@@ -37,6 +66,8 @@ module TryOver3::OriginalAccessor2
           self.class.define_method "#{attr_sym}?" do
             @attr == true
           end
+        else
+          mod.remove_method "#{attr_sym}?" if respond_to? "#{attr_sym}?"
         end
         @attr = value
       end
@@ -52,6 +83,21 @@ end
 # # => "run Hoge"
 # このとき、TryOver3::A4::Hogeという定数は定義されません。
 
+class TryOver3::A4
+  def self.const_missing(const)
+    if @consts.include?(const)
+      obj = Object.new
+      obj.define_singleton_method(:run) { "run #{const}" }
+      obj
+    else
+      super
+    end
+  end
+
+  def self.runners=(consts)
+    @consts = consts
+  end
+end
 
 # Q5. チャレンジ問題！ 挑戦する方はテストの skip を外して挑戦してみてください。
 #
@@ -59,16 +105,23 @@ end
 module TryOver3::TaskHelper
   def self.included(klass)
     klass.define_singleton_method :task do |name, &task_block|
-      new_klass = Class.new do
-        define_singleton_method :run do
-          puts "start #{Time.now}"
-          block_return = task_block.call
-          puts "finish #{Time.now}"
-          block_return
-        end
+      define_singleton_method name do
+        puts "start #{Time.now}"
+        block_return = task_block.call
+        puts "finish #{Time.now}"
+        block_return
       end
-      new_klass_name = name.to_s.split("_").map{ |w| w[0] = w[0].upcase; w }.join
-      const_set(new_klass_name, new_klass)
+
+      define_singleton_method(:const_missing) do |const|
+        super(const) unless klass.respond_to?(const.downcase)
+
+        obj = Object.new
+        obj.define_singleton_method :run do
+          warn "Warning: TryOver3::A5Task::#{const}.run is deprecated"
+          klass.send name
+        end
+        obj
+      end
     end
   end
 end
